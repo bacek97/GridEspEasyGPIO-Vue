@@ -2,48 +2,52 @@
 <!-- <meta http-equiv="refresh" content="5"/> -->
 <script src="https://unpkg.com/vue@3"></script>
 <style type="text/less">
-body { 
-	margin:0 ;
-	font-size: calc(1em + 10vmin);
-article {
-  display: grid;
-  height: calc(100% - 1px);
-  justify-content: center;
-  align-content: center;
- 	grid-auto-rows: 1fr;
-  @media (orientation: portrait) {
-  	grid-template-columns: repeat(2, 6fr);
-  }
-  @media (orientation: landscape) {
-  	grid-template-columns: repeat(3, 4fr);
-  }
-  > div {
-		&:active {
-		  	background: silver;
-		}
+	body { 
+		margin:0 ;
+		font-size: calc(1em + 10vmin);
+	}
+	article {
+	  display: grid;
+	  height: calc(100% - 1px);
 	  justify-content: center;
-	  display: flex;
-	  align-items: center;
-	  text-align: center;
-      border: 1px solid #000; /* Параметры рамки */
-  }
-}
-}
-</style>
+	  align-content: center;
+	 	grid-auto-rows: 1fr;
+	  @media (orientation: portrait) {
+	  	grid-template-columns: repeat(2, 6fr);
+	  }
+	  @media (orientation: landscape) {
+	  	grid-template-columns: repeat(3, 4fr);
+	  }
+	  > div {
+			&:active {
+			  	background: silver;
+			}
+		  justify-content: center;
+		  display: flex;
+		  align-items: center;
+		  text-align: center;
+	      border: 1px solid #000; /* Параметры рамки */
+	  }
+	}
 
+
+	.mbg1 {
+		background: radial-gradient(circle at center, #FFFFFF56, #FFF0 20%, #FFF0 21%), radial-gradient(circle at center, #0003, #0000 20%, #0000 21%), radial-gradient(circle farthest-corner at center, #f0f0f0, #c0c0c0);
+		background-size: 10px 10px, 10px 10px, 100% 100%;
+		background-position: 1px 1px, 0px 0px, center center;
+	}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/less@3" ></script>
 
 <script type="text/html" id="tempBody">
-<!-- 		 <p>{{ message }}</p>
-		 <button v-on:click="reverseMessage">Reverse Message</button> -->
-<article>
-   <comp-time />
-   <comp-weather />
-   <div>🔑<br />OFF</div>
-   <div>💡<br />OFF</div>
-   <div>💡<br />OFF</div>
-   <div style="filter: grayscale(1);">💡</div>
-</article>
+	<article>
+	   <comp-time class="mbg1" />
+	   <comp-weather class="mbg1" />
+	   <!-- <div>🔑<br />OFF</div> -->
+	   <comp-lamp class="mbg1" v-for="item in [2,16]" :gpio="item"/>
+	   <div class="mbg1" style="filter: grayscale(1);">💡<br />OFF</div>
+	   <div class="mbg1" style="filter: grayscale(1);">💡<br />OFF</div>
+	</article>
 </script>
 
 <!-- 
@@ -101,22 +105,37 @@ const compAsync = defineAsyncComponent(async () => {
 
 const compWeather = {
 	components: { compAsync },
-	template: `<div @click="fetchData">{{data}}˚C</div>`,
+	template: `<div @click="fetchData">{{icon}}<br /> {{temp}}˚C</div>`,
         setup() {
+	    const icon = ref(0);
+	    const temp = ref(0);
 	    const data = ref(0);
 	    const loading = ref(true);
-	    const error = ref(null);
+	    const icons = ref({
+	    	0: "🌑", 
+	    	1: "🌕", 
+	    	2: "🌤", 
+	    	3: "☁", 
+	    	4: "🌥", 
+	    	9: "🌧", 
+	    	10: "🌦", 
+	    	11: "🌩", 
+	    	13: "🌨", 
+	    	50: "🌫"});
+
 
 	    const fetchData = async()=> {
-	    	data.value = [ (await (await fetch('https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1')).json()).main.temp ].map((n) => (n < 0 ? `-${n}` : `+${n}`))[0]
+	    	data.value = (await (await fetch('https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1')).json())
+	    	temp.value = [ data.value.main.temp ].map((n) => (n < 0 ? `-${n}` : `+${n}`))[0]
+	    	icon.value = icons.value[ parseInt(data.value.weather[0].icon) ]
 	      // Will be implemented next
 	    }
 
 	    Vue.onBeforeMount(fetchData)
 	    return {
-	      data,
+	      temp,
+	      icon,
 	      loading,
-	      error,
 	      fetchData
 	    }
 	  }
@@ -124,6 +143,40 @@ const compWeather = {
 
 
 
+const compLamp = {
+	components: { compAsync },
+	props: ['gpio'],
+	template: `<div v-if="!loading" @click="fetchData2" :style="{filter: 'grayscale('+state+')'}">{{gpio == 2 ? "🔑" : "💡"}}<br />{{state > 0 ? "OFF" : "ON"}}</div>
+			   <div v-else />`,
+        setup(props) {
+	    const state = ref(0)
+	    const loading = ref(true)
+	    const error = ref(null)
+	    const url = "http://192.168.43.196/control?cmd="
+
+	    const fetchData = async()=> {
+	    	loading.value = true
+	    	state.value = (await (await fetch( url+'status,gpio,'+props.gpio )).json()).state
+	    	loading.value = false
+	      // Will be implemented next
+	    }
+
+	    const fetchData2 = async()=> {
+	    	loading.value = true
+	    	state.value = (await (await fetch( url+`GPIO,${props.gpio},${state.value ? "0" : "1"}` )).json()).state
+	    	loading.value = false
+	      // Will be implemented next
+	    }
+
+	    Vue.onBeforeMount(fetchData)
+	    return {
+	      state,
+	      loading,
+	      error,
+	      fetchData2
+	    }
+	  }
+	}
 
 
 
@@ -136,6 +189,6 @@ const compWeather = {
 
 const vApp = Vue.createApp({
 	template: "#tempBody",
-	components: { compTime, compWeather },
+	components: { compTime, compWeather, compLamp },
 }).mount("body")
 </script>
