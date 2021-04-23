@@ -44,7 +44,7 @@
 	   <comp-time class="mbg1" />
 	   <comp-weather class="mbg1" />
 	   <!-- <div>🔑<br />OFF</div> -->
-	   <comp-lamp class="mbg1" v-for="item in [2,16]" :gpio="item"/>
+	   <comp-lamp class="mbg1" v-for="gpio in [2,16]" :gpio="gpio"/>
 	   <div class="mbg1" style="filter: grayscale(1);">💡<br />OFF</div>
 	   <div class="mbg1" style="filter: grayscale(1);">💡<br />OFF</div>
 	</article>
@@ -60,135 +60,148 @@
 </body>
 
 <script>
-const ref = (a) => Vue.ref(a)
-const defineAsyncComponent = (a) => Vue.defineAsyncComponent(a)
+const ref = (a) => Vue.ref(a);
+const defineAsyncComponent = (a) => Vue.defineAsyncComponent(a);
 
 const compTime = {
-	name: "Time",
-	template: `<div>{{time.slice(0,5)}}</div>`,
-	setup() {
-		const timer = ref(null)
-		const time = ref("00:00")
-		const formattedTime = (d = new Date()) => {
-			return [d.getHours(), d.getMinutes(), d.getSeconds()]
-				.map((n) => (n < 10 ? `0${n}` : `${n}`))
-				.join(":")
-		}
+  name: "Time",
+  template: `<div>{{time.slice(0,5)}}</div>`,
+  setup() {
+    const timer = ref(null);
+    const time = ref("00:00");
+    const formattedTime = (d = new Date()) => {
+      return [d.getHours(), d.getMinutes(), d.getSeconds()]
+        .map((n) => (n < 10 ? `0${n}` : `${n}`))
+        .join(":");
+    };
 
-		const updateTime = () => {
-			const cd = new Date()
-			time.value = formattedTime()
-		}
+    const updateTime = () => {
+      const cd = new Date();
+      time.value = formattedTime();
+    };
 
-		const startTimer = () => {
-			timer.value = setInterval(() => {
-				updateTime()
-			}, 1000)
-		}
+    const startTimer = () => {
+      timer.value = setInterval(() => {
+        updateTime();
+      }, 1000);
+    };
 
-		const stopTimer = () => {
-			clearTimeout(timer)
-		}
-		Vue.onBeforeMount(updateTime)
-		Vue.onMounted(startTimer)
-		Vue.onUnmounted(stopTimer)
-		return { time }
-	},
-}
+    const stopTimer = () => {
+      clearTimeout(timer);
+    };
+    Vue.onBeforeMount(updateTime);
+    Vue.onMounted(startTimer);
+    Vue.onUnmounted(stopTimer);
+    return { time };
+  },
+};
 
 const compAsync = defineAsyncComponent(async () => {
-	const weather = (await (await fetch('https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1')).json())
-	return {
-		template: `<div>${[weather.main.temp].map((n) => (n < 0 ? `-${n}` : `+${n}`))}˚C</div>`,
-	}
-})
+  const weather = await (
+    await fetch(
+      "https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1"
+    )
+  ).json();
+  return {
+    template: `<div>${[weather.main.temp].map((n) =>
+      n < 0 ? `-${n}` : `+${n}`
+    )}˚C</div>`,
+  };
+});
 
 const compWeather = {
-	components: { compAsync },
-	template: `<div @click="fetchData">{{icon}}<br /> {{temp}}˚C</div>`,
-        setup() {
-	    const icon = ref(0);
-	    const temp = ref(0);
-	    const data = ref(0);
-	    const loading = ref(true);
-	    const icons = ref({
-	    	0: "🌑", 
-	    	1: "🌕", 
-	    	2: "🌤", 
-	    	3: "☁", 
-	    	4: "🌥", 
-	    	9: "🌧", 
-	    	10: "🌦", 
-	    	11: "🌩", 
-	    	13: "🌨", 
-	    	50: "🌫"});
+  components: { compAsync },
+  template: `<div @click="fetchData">{{icon}}<br /> {{temp}}˚C</div>`,
+  setup() {
+    const icon = ref(0);
+    const temp = ref(0);
+    const data = ref(0);
+    const loading = ref(true);
+    const icons = ref({
+      0: "🌑",
+      1: "🌕",
+      2: "🌤",
+      3: "☁",
+      4: "🌥",
+      9: "🌧",
+      10: "🌦",
+      11: "🌩",
+      13: "🌨",
+      50: "🌫",
+    });
 
+    const fetchData = async () => {
+      data.value = await (
+        await fetch(
+          "https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1"
+        )
+      ).json();
+      temp.value = [data.value.main.temp].map((n) =>
+        n < 0 ? `-${n}` : `+${n}`
+      )[0];
+      icon.value = icons.value[parseInt(data.value.weather[0].icon)];
+      // Will be implemented next
+    };
 
-	    const fetchData = async()=> {
-	    	data.value = (await (await fetch('https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1')).json())
-	    	temp.value = [ data.value.main.temp ].map((n) => (n < 0 ? `-${n}` : `+${n}`))[0]
-	    	icon.value = icons.value[ parseInt(data.value.weather[0].icon) ]
-	      // Will be implemented next
-	    }
-
-	    Vue.onBeforeMount(fetchData)
-	    return {
-	      temp,
-	      icon,
-	      loading,
-	      fetchData
-	    }
-	  }
-	}
-
-
+    Vue.onBeforeMount(fetchData);
+    return {
+      temp,
+      icon,
+      loading,
+      fetchData,
+    };
+  },
+};
 
 const compLamp = {
-	components: { compAsync },
-	props: ['gpio'],
-	template: `<div v-if="!loading" @click="fetchData2" :style="{filter: 'grayscale('+state+')'}">{{gpio == 2 ? "🔑" : "💡"}}<br />{{state > 0 ? "OFF" : "ON"}}</div>
+  components: { compAsync },
+  props: ["gpio"],
+  template: `<div v-if="!loading" @click="fetchData2" :style="{filter: 'grayscale('+(state == OFF ? 1 : 0) +')'}">{{gpio == 2 ? "🔑" : "💡"}}<br />{{state == OFF ? "OFF" : "ON"}}</div>
 			   <div v-else />`,
-        setup(props) {
-	    const state = ref(0)
-	    const loading = ref(true)
-	    const error = ref(null)
-	    const url = "http://192.168.43.196/control?cmd="
+  setup(props) {
+    const OFF = ref(0);
+    const state = ref(0);
+    const loading = ref(true);
+    const url = "http://192.168.43.196/control?cmd=";
 
-	    const fetchData = async()=> {
-	    	loading.value = true
-	    	state.value = (await (await fetch( url+'status,gpio,'+props.gpio )).json()).state
-	    	loading.value = false
-	      // Will be implemented next
-	    }
+    const fetchData = async () => {
+      loading.value = true;
+      state.value = (
+        await (await fetch(url + "status,gpio," + props.gpio)).json()
+      ).state;
+      loading.value = false;
+      // Will be implemented next
+    };
 
-	    const fetchData2 = async()=> {
-	    	loading.value = true
-	    	state.value = (await (await fetch( url+`GPIO,${props.gpio},${state.value ? "0" : "1"}` )).json()).state
-	    	loading.value = false
-	      // Will be implemented next
-	    }
+    const fetchData2 = async () => {
+      loading.value = true;
+      state.value = (
+        await (
+          await fetch(url + `GPIO,${props.gpio},${state.value ? 0 : 1}`)
+        ).json()
+      ).state;
+      loading.value = false;
+      // Will be implemented next
+    };
 
-	    Vue.onBeforeMount(fetchData)
-	    return {
-	      state,
-	      loading,
-	      error,
-	      fetchData2
-	    }
-	  }
-	}
+    Vue.onBeforeMount(fetchData);
+    return {
+      state,
+      loading,
+      OFF,
+      fetchData2,
+    };
+  },
+};
 
-
-
-	// setup() {
-	// 	const weather = ref("Fetch")
-	// 	// const weather2 = (await (await fetch('https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1')).json())
-	// 	return { weather } // anything returned here will be available for the rest of the component
-	// },
-
+// setup() {
+// 	const weather = ref("Fetch")
+// 	// const weather2 = (await (await fetch('https://api.openweathermap.org/data/2.5/weather?q=Kazan&lang=ru&units=metric&appid=c80f014c14afe2fb19a19dbf7d3d0ca1')).json())
+// 	return { weather } // anything returned here will be available for the rest of the component
+// },
 
 const vApp = Vue.createApp({
-	template: "#tempBody",
-	components: { compTime, compWeather, compLamp },
-}).mount("body")
+  template: "#tempBody",
+  components: { compTime, compWeather, compLamp },
+}).mount("body");
 </script>
